@@ -180,145 +180,145 @@ int main(void)
   MX_I2C1_Init();
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
-	Init_Calibrate_MPU();
-	Init_Flash256();
+//	Init_Calibrate_MPU();
+//	Init_Flash256();
 
-	countx = 0;
-	rxdata[0]='0';
-	while(countx < 5)
-	{
-		HAL_UART_Receive(&huart1,rxdata,1,1000);
-		if(rxdata[0] == '1')			
-		{	
-			HAL_UART_Transmit(&huart1,"\nMODE-01",8,10); 	rxdata[0] = '0';	
-		}
-		else if(rxdata[0] == '2')	{	HAL_UART_Transmit(&huart1,"\nMODE-02",8,10);	countx = 5;	}	
-		else if(rxdata[0] == '3')	{	HAL_UART_Transmit(&huart1,"\nMODE-03",8,10);	countx = 5;	}	
-		else if(rxdata[0] == '4')	{	Visualize_MPU9250_Data();	countx = 5;		rxdata[0] = '0';	}	
-		else											{	HAL_UART_Transmit(&huart1,"\nMODE-XX",8,10);	rxdata[0] = '0';	}	
-		countx++;
-	}
-	if(rxdata[0] == '0')	{	rxdata[0] = '1';	}
-	
-	HAL_GPIO_WritePin(GPLED3_GPIO_Port,GPLED3_Pin,GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPLED4_GPIO_Port,GPLED4_Pin,GPIO_PIN_SET);
-	HAL_Delay(250);
-	HAL_GPIO_WritePin(GPLED3_GPIO_Port,GPLED3_Pin,GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPLED4_GPIO_Port,GPLED4_Pin,GPIO_PIN_RESET);
-	
-	memlogstate = '0';
-	memlogflag = '0'; memreadflag = '0'; memeraseflag = '0';
-	
-	Flash_Read_Data(0x00002000-3,memdata1,15);
-	if(Buffercmp(memdata1,"[MEMORY   FULL]",16) == 0)	{	memlogflag = '1';		}
-	
-	Flash_Read_Data(0x00003000-3,memdata2,15);
-	if(Buffercmp(memdata1,"[MEMORY   READ]",16) == 0)	{	memreadflag = '1';	}
-	
-	Flash_Read_Data(0x00004000-3,memdata3,15);
-	if(Buffercmp(memdata1,"[MEMORY ERASED]",16) == 0)	{	memeraseflag = '1';	}
-
-	while(1)
-	{	
-		while(rxdata[0] == '0')
-		{
-			HAL_UART_Transmit(&huart1,"\n1-STORE  2-RELAY  3-ERASE",26,30);
-			HAL_UART_Receive(&huart1,rxdata,1,1000);
-		}
-		
-		if(rxdata[0] == '1')
-		{
-			Flash_Read_Data(0x00002000-3,memdata1,15);
-			if(Buffercmp(memdata1,"[MEMORY   FULL]",15) != 0)
-			{
-				Flash_Read_Data(0x00004000-3,memdata3,15);
-				if(Buffercmp(memdata3,"[MEMORY ERASED]",15) == 0)
-				{
-//					Read_Store_MPU9250_Data();
-					Read_Store_MPU9250_Data1();
-					Flash_Write_Data(0x00002000,"[MEMORY   FULL]",15);
-				}
-				else	
-				{
-					HAL_UART_Transmit(&huart1,"\nERR: MEMORY NOT ERASED",23,20);	
-				}
-			}
-			else	
-			{
-				HAL_UART_Transmit(&huart1,"\nERR: MEM ALREADY FULL ",23,20);	
-			}
-			rxdata[0] = '0';
-		}
-		
-		else if(rxdata[0] == '2')	
-		{	
-			Flash_Read_Data(0x00002000-3,memdata1,15);
-			if(Buffercmp(memdata1,"[MEMORY   FULL]",15) == 0)
-			{
-				Read_Relay_Accel_Data();
-				Flash_Write_Data(0x00003000,"[MEMORY   READ]",15);
-			}
-			else	
-			{
-				HAL_UART_Transmit(&huart1,"\nERR: MEM EMPTY",15,15);		
-			}
-			rxdata[0] = '0';
-		}
-		
-		else if(rxdata[0] == '3')
-		{
-			Flash_Read_Data(0x00003000-3,memdata2,15);
-			if(Buffercmp(memdata2,"[MEMORY   READ]",15) == 0)
-			{
-				if(Init_Flash256() == 1)		
-				{
-					HAL_UART_Transmit(&huart1,"\n[Erasing Required Memory]",26,50);	
-					uint32_t tempaddress=0x00000000;
-					for(int i=0;i<65;i++)
-					{
-						Flash_Block_Erase(tempaddress);
-						HAL_UART_Transmit(&huart1,"\n[",2,2);
-						Display_32Bit_Hex(tempaddress);
-						HAL_UART_Transmit(&huart1,"-BLOCK ERASED-]",15,10);
-						tempaddress = tempaddress + 0x00010000;
-					}
-					Flash_Write_Data(0x00004000,"[MEMORY ERASED]",15);
-					HAL_UART_Transmit(&huart1,"\n[Memory Erasing Complete]",26,50);	
-				}
-				else	{	HAL_UART_Transmit(&huart1,"\nFlash NOK",10,10);		}
-			}
-			else	{	HAL_UART_Transmit(&huart1,"\nERR: MEM NOT READ",19,20);		}
-			rxdata[0] = '0';
-		}
-		else if(rxdata[0] == 'X')
-		{
-				uint32_t tempaddress=0x00000000;
-				for(int i=0;i<65;i++)
-				{
-					Flash_Block_Erase(tempaddress);
-					HAL_UART_Transmit(&huart1,"\n[",2,2);
-					Display_32Bit_Hex(tempaddress);
-					HAL_UART_Transmit(&huart1,"-BLOCK ERASED-]",15,10);
-					tempaddress = tempaddress + 0x00010000;
-				}
-				Flash_Write_Data(0x00004000,"[MEMORY ERASED]",15);
-				HAL_UART_Transmit(&huart1,"\n[Memory Erasing Complete]",26,50);			
-		}
-		else	{	;	}
-		rxdata[0] = '0';
-	}	
-	
-	//Simulate_ADXL375_Data();
-	//Simulate_MPU9250_Data();
-//	Visualize_MPU9250_Data();
-//	Read_Store_MPU9250_Data();
-	//Read_Relay_Accel_Data();
-	while(1)	{	HAL_Delay(200);	}
+//	countx = 0;
+//	rxdata[0]='0';
+//	while(countx < 5)
 //	{
-//		HAL_Delay(200);
-//		HAL_UART_Transmit(&huart1,"\nHello",6,10);
-//		HAL_GPIO_TogglePin(GPLED2_GPIO_Port,GPLED2_Pin);
+//		HAL_UART_Receive(&huart1,rxdata,1,1000);
+//		if(rxdata[0] == '1')			
+//		{	
+//			HAL_UART_Transmit(&huart1,"\nMODE-01",8,10); 	rxdata[0] = '0';	
+//		}
+//		else if(rxdata[0] == '2')	{	HAL_UART_Transmit(&huart1,"\nMODE-02",8,10);	countx = 5;	}	
+//		else if(rxdata[0] == '3')	{	HAL_UART_Transmit(&huart1,"\nMODE-03",8,10);	countx = 5;	}	
+//		else if(rxdata[0] == '4')	{	Visualize_MPU9250_Data();	countx = 5;		rxdata[0] = '0';	}	
+//		else											{	HAL_UART_Transmit(&huart1,"\nMODE-XX",8,10);	rxdata[0] = '0';	}	
+//		countx++;
 //	}
+//	if(rxdata[0] == '0')	{	rxdata[0] = '1';	}
+//	
+//	HAL_GPIO_WritePin(GPLED3_GPIO_Port,GPLED3_Pin,GPIO_PIN_SET);
+//	HAL_GPIO_WritePin(GPLED4_GPIO_Port,GPLED4_Pin,GPIO_PIN_SET);
+//	HAL_Delay(250);
+//	HAL_GPIO_WritePin(GPLED3_GPIO_Port,GPLED3_Pin,GPIO_PIN_RESET);
+//	HAL_GPIO_WritePin(GPLED4_GPIO_Port,GPLED4_Pin,GPIO_PIN_RESET);
+//	
+//	memlogstate = '0';
+//	memlogflag = '0'; memreadflag = '0'; memeraseflag = '0';
+//	
+//	Flash_Read_Data(0x00002000-3,memdata1,15);
+//	if(Buffercmp(memdata1,"[MEMORY   FULL]",16) == 0)	{	memlogflag = '1';		}
+//	
+//	Flash_Read_Data(0x00003000-3,memdata2,15);
+//	if(Buffercmp(memdata1,"[MEMORY   READ]",16) == 0)	{	memreadflag = '1';	}
+//	
+//	Flash_Read_Data(0x00004000-3,memdata3,15);
+//	if(Buffercmp(memdata1,"[MEMORY ERASED]",16) == 0)	{	memeraseflag = '1';	}
+
+//	while(1)
+//	{	
+//		while(rxdata[0] == '0')
+//		{
+//			HAL_UART_Transmit(&huart1,"\n1-STORE  2-RELAY  3-ERASE",26,30);
+//			HAL_UART_Receive(&huart1,rxdata,1,1000);
+//		}
+//		
+//		if(rxdata[0] == '1')
+//		{
+//			Flash_Read_Data(0x00002000-3,memdata1,15);
+//			if(Buffercmp(memdata1,"[MEMORY   FULL]",15) != 0)
+//			{
+//				Flash_Read_Data(0x00004000-3,memdata3,15);
+//				if(Buffercmp(memdata3,"[MEMORY ERASED]",15) == 0)
+//				{
+////					Read_Store_MPU9250_Data();
+//					Read_Store_MPU9250_Data1();
+//					Flash_Write_Data(0x00002000,"[MEMORY   FULL]",15);
+//				}
+//				else	
+//				{
+//					HAL_UART_Transmit(&huart1,"\nERR: MEMORY NOT ERASED",23,20);	
+//				}
+//			}
+//			else	
+//			{
+//				HAL_UART_Transmit(&huart1,"\nERR: MEM ALREADY FULL ",23,20);	
+//			}
+//			rxdata[0] = '0';
+//		}
+//		
+//		else if(rxdata[0] == '2')	
+//		{	
+//			Flash_Read_Data(0x00002000-3,memdata1,15);
+//			if(Buffercmp(memdata1,"[MEMORY   FULL]",15) == 0)
+//			{
+//				Read_Relay_Accel_Data();
+//				Flash_Write_Data(0x00003000,"[MEMORY   READ]",15);
+//			}
+//			else	
+//			{
+//				HAL_UART_Transmit(&huart1,"\nERR: MEM EMPTY",15,15);		
+//			}
+//			rxdata[0] = '0';
+//		}
+//		
+//		else if(rxdata[0] == '3')
+//		{
+//			Flash_Read_Data(0x00003000-3,memdata2,15);
+//			if(Buffercmp(memdata2,"[MEMORY   READ]",15) == 0)
+//			{
+//				if(Init_Flash256() == 1)		
+//				{
+//					HAL_UART_Transmit(&huart1,"\n[Erasing Required Memory]",26,50);	
+//					uint32_t tempaddress=0x00000000;
+//					for(int i=0;i<65;i++)
+//					{
+//						Flash_Block_Erase(tempaddress);
+//						HAL_UART_Transmit(&huart1,"\n[",2,2);
+//						Display_32Bit_Hex(tempaddress);
+//						HAL_UART_Transmit(&huart1,"-BLOCK ERASED-]",15,10);
+//						tempaddress = tempaddress + 0x00010000;
+//					}
+//					Flash_Write_Data(0x00004000,"[MEMORY ERASED]",15);
+//					HAL_UART_Transmit(&huart1,"\n[Memory Erasing Complete]",26,50);	
+//				}
+//				else	{	HAL_UART_Transmit(&huart1,"\nFlash NOK",10,10);		}
+//			}
+//			else	{	HAL_UART_Transmit(&huart1,"\nERR: MEM NOT READ",19,20);		}
+//			rxdata[0] = '0';
+//		}
+//		else if(rxdata[0] == 'X')
+//		{
+//				uint32_t tempaddress=0x00000000;
+//				for(int i=0;i<65;i++)
+//				{
+//					Flash_Block_Erase(tempaddress);
+//					HAL_UART_Transmit(&huart1,"\n[",2,2);
+//					Display_32Bit_Hex(tempaddress);
+//					HAL_UART_Transmit(&huart1,"-BLOCK ERASED-]",15,10);
+//					tempaddress = tempaddress + 0x00010000;
+//				}
+//				Flash_Write_Data(0x00004000,"[MEMORY ERASED]",15);
+//				HAL_UART_Transmit(&huart1,"\n[Memory Erasing Complete]",26,50);			
+//		}
+//		else	{	;	}
+//		rxdata[0] = '0';
+//	}	
+//	
+//	//Simulate_ADXL375_Data();
+//	//Simulate_MPU9250_Data();
+////	Visualize_MPU9250_Data();
+////	Read_Store_MPU9250_Data();
+//	//Read_Relay_Accel_Data();
+//	while(1)	{	HAL_Delay(200);	}
+////	{
+////		HAL_Delay(200);
+////		HAL_UART_Transmit(&huart1,"\nHello",6,10);
+////		HAL_GPIO_TogglePin(GPLED2_GPIO_Port,GPLED2_Pin);
+////	}
 	SSD1306_Init();
 //	SSD1306_Clear();
 //	SSD1306_GotoXY(0,20);
@@ -695,7 +695,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 230400;
+  huart1.Init.BaudRate = 1000000;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
