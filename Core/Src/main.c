@@ -180,7 +180,8 @@ int main(void)
   MX_I2C1_Init();
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
-//	Init_Calibrate_MPU();
+	//Init_Calibrate_MPU();
+	Visualize_MPU9250_Data();
 //	Init_Flash256();
 
 //	countx = 0;
@@ -695,7 +696,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 1000000;
+  huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -1775,7 +1776,7 @@ void Visualize_MPU9250_Data()
 	uint16_t pktcount=1;
 	
 	float acclx=0.0,accly=0.0,acclz=0.0;
-//	float offsetx=3.18,offsety=0.0,offsetz=0.180;
+	float offsetx=0.0,offsety=0.0,offsetz=0.0;
 	
 	Init_MPU9250_New();
 	
@@ -1787,13 +1788,32 @@ void Visualize_MPU9250_Data()
 		aclyy= (rxbuf[2]<<8) + rxbuf[3];
 		aclzz= (rxbuf[4]<<8) + rxbuf[5];
 
-		acclx=(float)aclxx * 0.00049 + offsetmx;
-		accly=(float)aclyy * 0.00049 + offsetmy;
-		acclz=(float)aclzz * 0.00049 + offsetmz;
+		offsetx += ((float)aclxx * 0.00049);
+		offsety += ((float)aclyy * 0.00049);
+		offsetz += 1-((float)aclzz * 0.00049);
+		HAL_UART_Transmit(&huart1,"\nCalibrating",11,20);
+		HAL_Delay(10);
+		offsetcount++;
+	}
+	
+	offsetx = offsetx/100;
+	offsety = offsety/100;
+	offsetz = offsetz/100;
+	if(offsetx < 0)	{	offsetx = (-1) * offsetx;	}
+	if(offsety < 0)	{	offsety = (-1) * offsety;	}
+	if(offsetz < 0)	{	offsetz = (-1) * offsetz;	}
+	
+	while(1)
+	{
+		for(int i=0;i<6;i++)	{	rxbuf[i] = 0;	}
+		Read_MPU_Regs(MPU9250_ACCEL_XOUT_H,rxbuf,6);
+		aclxx= (rxbuf[0]<<8) + rxbuf[1];
+		aclyy= (rxbuf[2]<<8) + rxbuf[3];
+		aclzz= (rxbuf[4]<<8) + rxbuf[5];
 
-//		offsetxx += ((float)aclxx * 0.00049);
-//		offsetyy += ((float)aclyy * 0.00049);
-//		offsetzz += ((float)aclzz * 0.00049);
+		acclx=((float)aclxx * 0.00049) + offsetx;
+		accly=((float)aclyy * 0.00049) + offsety;
+		acclz=((float)aclzz * 0.00049) + offsetz;
 
 		count=0;
 		compsensordata[count] = '$';	count++;
@@ -1817,8 +1837,7 @@ void Visualize_MPU9250_Data()
 
 		HAL_UART_Transmit(&huart1,compsensordata,count,20);
 		pktcount++;
-		offsetcount++;
-		HAL_Delay(100);
+		HAL_Delay(10);
 	}
 }
 /******************************************************************************
