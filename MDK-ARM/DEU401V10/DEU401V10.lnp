@@ -1,4 +1,4 @@
---cpu=Cortex-M4.fp.sp
+--cpu=Cortex-M4.fp
 ".\deu401v10\startup_stm32f401xc.o"
 ".\deu401v10\adxl375mkm.o"
 ".\deu401v10\bme280mkm.o"
